@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Test osadzenia widgetu AI Quote</title>
+<style>
+  body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+  .fake-site { background: #f1f5f9; padding: 24px; border-radius: 12px; }
+</style>
+</head>
+<body>
+  <h1>Przykładowa strona firmy — test widgetu</h1>
+  <p>Ta strona symuluje zewnętrzną witrynę firmy z osadzonym widgetem AI Quote (Etap 19).</p>
+  <div class="fake-site">
+    <h2>Skontaktuj się z nami</h2>
+    <!-- Zastąp "twoja-firma" prawdziwym slugiem aktywnej (po onboardingu) firmy —
+         dokładnie taki kod znajdziesz też w panelu /app/embed. -->
+    <iframe
+      src="http://localhost:5173/q/twoja-firma"
+      title="Wycena AI"
+      style="width: 100%; max-width: 480px; height: 640px; border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);"
+    ></iframe>
+  </div>
+</body>
+</html>

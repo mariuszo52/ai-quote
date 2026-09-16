@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: ai-quote-backend
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:ai_quote}
+    username: ${POSTGRES_USER:ai_quote}
+    password: ${POSTGRES_PASSWORD:ai_quote}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  mvc:
+    async:
+      request-timeout: 60000
+
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# Etap 21: only "health" is exposed — actuator's other endpoints (env, beans,
+# configprops, etc.) can leak internal configuration/secrets and aren't needed here.
+# The mail health indicator is disabled: it fails whenever SMTP_HOST is unset/unreachable
+# (true for local dev, and a real possibility in prod during an SMTP provider outage),
+# which isn't a meaningful "can this instance serve HTTP traffic" signal — a container
+# orchestrator restarting the app over a transient SMTP outage would make things worse,
+# not better. Offer-sending already degrades gracefully on its own (see OfferSendService).
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    mail:
+      enabled: false
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-please-0123456789abcdef}
+    expiration: PT24H
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  mail:
+    from: ${SMTP_FROM:}
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      model: ${ANTHROPIC_MODEL:claude-sonnet-5}
+      max-tokens: ${ANTHROPIC_MAX_TOKENS:1024}
+  storage:
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ROOT_USER:ai_quote}
+      secret-key: ${MINIO_ROOT_PASSWORD:ai_quote_secret}
+      bucket: ${MINIO_BUCKET:ai-quote-files}
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    price-starter: ${STRIPE_PRICE_STARTER:}
+    price-growth: ${STRIPE_PRICE_GROWTH:}
+    price-pro: ${STRIPE_PRICE_PRO:}

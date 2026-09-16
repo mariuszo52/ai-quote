@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ai-quote-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_quote}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_quote}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_quote}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ai-quote-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_quote}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: ai-quote-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-ai_quote}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ai_quote_secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ai-quote-minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ai-quote-backend
+    restart: unless-stopped
+    # env_file (not `environment: KEY: ${KEY:-}`) so that unset optional secrets like
+    # JWT_SECRET are simply absent from the container's env, letting Spring's own
+    # `${JWT_SECRET:dev-only-...}` fallback in application.yml apply. Substituting an
+    # empty string here would silently override that fallback with "".
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      MINIO_ENDPOINT: http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+    container_name: ai-quote-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+
+volumes:
+  ai-quote-postgres-data:
+  ai-quote-minio-data:

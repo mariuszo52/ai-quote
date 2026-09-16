@@ -1,0 +1,23 @@
+# Secrets — never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Backend (Maven / Java)
+backend/target/
+*.class
+
+# Frontend (Node / Vite)
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+*.iml
+
+# Claude Code local tooling state (lock files, not project source)
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

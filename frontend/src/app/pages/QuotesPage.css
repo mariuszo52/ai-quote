@@ -1,0 +1,30 @@
+.quotes-page {
+  flex: 1;
+  padding: var(--space-5);
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.quotes-page p.quotes-subtitle {
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.quotes-client-link {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.quotes-total {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.quotes-confidence-empty {
+  color: var(--color-text-muted);
+}
