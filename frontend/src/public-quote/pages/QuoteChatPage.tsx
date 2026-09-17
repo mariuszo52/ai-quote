@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type
 import { useParams } from 'react-router-dom'
 import {
   companyLogoUrl,
+  getCompanyMaterials,
   getCompanyPublicInfo,
   startConversation,
   streamQuoteMessage,
@@ -53,6 +54,7 @@ function QuoteChatPage() {
   const [submittingContact, setSubmittingContact] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([])
+  const [materials, setMaterials] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -71,6 +73,12 @@ function QuoteChatPage() {
         setMessages([{ role: 'ASSISTANT', content: session.greeting }])
         setOptions(session.options)
         setStatus('ready')
+
+        getCompanyMaterials(slug)
+          .then(setMaterials)
+          .catch(() => {
+            /* autocomplete is a bonus — the chat still works fine without it */
+          })
       })
       .catch((err: unknown) => {
         // 409 = the company has used up its trial/plan quote allowance for this
@@ -233,6 +241,19 @@ function QuoteChatPage() {
   const companyName = company?.displayName ?? ''
   const primaryColor = company?.primaryColor
 
+  // Nudges the client toward mentioning materials/devices by name — especially useful
+  // when they type something the company hasn't listed yet, since that's exactly the
+  // gap more materials on the owner's side (see MaterialsPage) would close.
+  const trimmedInput = input.trim().toLowerCase()
+  const hasNoMaterialMatch =
+    trimmedInput.length > 2 &&
+    materials.length > 0 &&
+    !materials.some((name) => {
+      const lower = name.toLowerCase()
+      return lower.includes(trimmedInput) || trimmedInput.includes(lower)
+    })
+  const showMaterialsHint = materials.length === 0 || hasNoMaterialMatch
+
   return (
     <main className="quote-page" style={primaryColor ? ({ '--color-primary': primaryColor } as CSSProperties) : undefined}>
       <div className="quote-shell">
@@ -373,11 +394,24 @@ function QuoteChatPage() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Opisz swoje zlecenie..."
                 disabled={sending}
+                list="quote-materials-list"
               />
               <Button type="submit" disabled={sending || !input.trim()} loading={sending && !analyzingImages}>
                 Wyślij
               </Button>
             </div>
+            {materials.length > 0 && (
+              <datalist id="quote-materials-list">
+                {materials.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            )}
+            {showMaterialsHint && (
+              <p className="quote-materials-hint">
+                Im więcej informacji i materiałów doda usługodawca do swojej listy, tym dokładniejsza będzie wycena.
+              </p>
+            )}
             <input
               type="file"
               ref={fileInputRef}

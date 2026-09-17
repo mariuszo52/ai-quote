@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Alert, Card } from '../../shared/ui'
+import { Card } from '../../shared/ui'
 import './TermsPage.css'
 
 function TermsPage() {
@@ -19,18 +19,16 @@ function TermsPage() {
         <h1>Regulamin świadczenia usługi AI Quote</h1>
         <p className="terms-updated">Ostatnia aktualizacja: {new Date().toLocaleDateString('pl-PL')}</p>
 
-        <Alert tone="info">
-          To jest ogólny szablon regulaminu. Przed publikacją uzupełnij dane oznaczone nawiasami kwadratowymi (nazwa
-          firmy, NIP, adres, kontakt) i skonsultuj treść z prawnikiem — zwłaszcza że usługa obsługuje realne płatności
-          kartą przez Stripe.
-        </Alert>
-
         <Card className="terms-section">
           <h2>1. Postanowienia ogólne</h2>
           <p>
             Niniejszy regulamin określa zasady korzystania z usługi AI Quote (dalej „Usługa”), dostępnej pod adresem
-            [adres strony], świadczonej przez [nazwa firmy], z siedzibą pod adresem [adres], NIP: [numer NIP], adres
-            e-mail kontaktowy: [adres e-mail] (dalej „Usługodawca”).
+            https://www.wycenaonline.com.pl, świadczonej przez Mariusza Ozgę, adres e-mail kontaktowy:
+            wycenaonlineai@gmail.com
+            (dalej „Usługodawca”). Usługodawca jest osobą fizyczną prowadzącą działalność nierejestrowaną w
+            rozumieniu art. 5 ustawy z dnia 6 marca 2018 r. – Prawo przedsiębiorców (Dz.U. z 2018 r. poz. 646 ze
+            zm.) — działalność ta nie jest wpisana do CEIDG i zgodnie z przepisami nie stanowi działalności
+            gospodarczej w rozumieniu tej ustawy.
           </p>
           <p>
             Usługa umożliwia przedsiębiorcom (dalej „Użytkownik” lub „Firma”) automatyczne przygotowywanie wstępnych
@@ -101,9 +99,10 @@ function TermsPage() {
           <h2>6. Dane osobowe</h2>
           <p>
             Administratorem danych osobowych przetwarzanych w związku z korzystaniem z Usługi (w tym danych klientów
-            Użytkownika przekazywanych w toku wyceny) jest [nazwa firmy]. Dane przetwarzane są w celu świadczenia
+            Użytkownika przekazywanych w toku wyceny) jest Mariusz Ozga. Dane przetwarzane są w celu świadczenia
             Usługi, w tym generowania wycen, przesyłania ofert oraz obsługi płatności, zgodnie z obowiązującymi
-            przepisami o ochronie danych osobowych (RODO).
+            przepisami o ochronie danych osobowych (RODO). Kontakt w sprawach ochrony danych:
+            wycenaonlineai@gmail.com.
           </p>
         </Card>
 
@@ -120,8 +119,8 @@ function TermsPage() {
         <Card className="terms-section">
           <h2>8. Reklamacje</h2>
           <p>
-            Reklamacje dotyczące działania Usługi można zgłaszać na adres e-mail [adres e-mail]. Usługodawca
-            rozpatruje reklamacje w terminie 14 dni od dnia ich otrzymania.
+            Reklamacje dotyczące działania Usługi można zgłaszać na adres e-mail wycenaonlineai@gmail.com.
+            Usługodawca rozpatruje reklamacje w terminie 14 dni od dnia ich otrzymania.
           </p>
         </Card>
 
@@ -137,8 +136,8 @@ function TermsPage() {
           <h2>10. Postanowienia końcowe</h2>
           <p>
             W sprawach nieuregulowanych niniejszym regulaminem zastosowanie mają przepisy prawa polskiego. Wszelkie
-            spory będą rozstrzygane przez sąd właściwy dla siedziby Usługodawcy, o ile przepisy bezwzględnie
-            obowiązujące nie stanowią inaczej.
+            spory będą rozstrzygane przez sąd właściwy według przepisów Kodeksu postępowania cywilnego, o ile przepisy
+            bezwzględnie obowiązujące nie stanowią inaczej.
           </p>
         </Card>
       </div>

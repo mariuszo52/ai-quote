@@ -14,7 +14,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +36,6 @@ public class OfferSendService {
     private final StorageService storageService;
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
-    private final String frontendUrl;
 
     public OfferSendService(
             OfferRepository offerRepository,
@@ -45,15 +43,13 @@ public class OfferSendService {
             LeadRepository leadRepository,
             StorageService storageService,
             EmailService emailService,
-            ObjectMapper objectMapper,
-            @Value("${app.frontend-url}") String frontendUrl) {
+            ObjectMapper objectMapper) {
         this.offerRepository = offerRepository;
         this.quoteRepository = quoteRepository;
         this.leadRepository = leadRepository;
         this.storageService = storageService;
         this.emailService = emailService;
         this.objectMapper = objectMapper;
-        this.frontendUrl = frontendUrl;
     }
 
     /**
@@ -82,11 +78,10 @@ public class OfferSendService {
 
         try {
             byte[] pdf = storageService.retrieve(offer.getPdfStorageKey()).readAllBytes();
-            String offerLink = frontendUrl + "/offer/" + offer.getPublicToken();
             emailService.send(new EmailMessage(
                     offer.getClientEmail(),
                     SUBJECT,
-                    body(offer, offerLink),
+                    body(offer),
                     new EmailAttachment("oferta-" + offer.getId() + ".pdf", "application/pdf", pdf)));
             offer.markSent();
             if (quote != null) {
@@ -105,18 +100,15 @@ public class OfferSendService {
         return toResponse(offer);
     }
 
-    private String body(Offer offer, String offerLink) {
+    private String body(Offer offer) {
         return """
                 Dzień dobry %s,
 
                 Dziękujemy za Twoje zapytanie. W załączniku przesyłamy przygotowaną ofertę \
                 (nr %d), na kwotę %s %s.
 
-                Ofertę można również obejrzeć online pod adresem:
-                %s
-
                 W razie pytań pozostajemy do dyspozycji.
-                """.formatted(offer.getClientName(), offer.getId(), offer.getTotal(), offer.getCurrency(), offerLink);
+                """.formatted(offer.getClientName(), offer.getId(), offer.getTotal(), offer.getCurrency());
     }
 
     private OfferResponse toResponse(Offer offer) {

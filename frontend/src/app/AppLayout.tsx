@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { getBillingStatus } from '../shared/api/billingApi'
 import { clearToken } from '../shared/api/client'
 import { Alert, Button } from '../shared/ui'
@@ -43,10 +43,10 @@ function AppLayout() {
   return (
     <div className="app-shell">
       <header className="app-topbar">
-        <div className="app-brand">
+        <Link to="/app" className="app-brand">
           <span className="app-brand-mark" aria-hidden="true" />
           <span className="app-brand-name">AI Quote</span>
-        </div>
+        </Link>
         {!blocked && (
           <nav className="app-nav">
             <NavLink to="/app/dashboard" className={navLinkClass}>
@@ -54,6 +54,9 @@ function AppLayout() {
             </NavLink>
             <NavLink to="/app/onboarding" className={navLinkClass}>
               Wiedza firmy
+            </NavLink>
+            <NavLink to="/app/materials" className={navLinkClass}>
+              Moje materiały
             </NavLink>
             <NavLink to="/app/leads" className={navLinkClass}>
               Leady

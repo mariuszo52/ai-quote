@@ -2,6 +2,7 @@ package com.aiquote.backend.quote;
 
 import com.aiquote.backend.company.LogoContent;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,6 +31,11 @@ public class PublicQuoteController {
     @GetMapping("/companies/{slug}")
     public CompanyPublicResponse getCompany(@PathVariable String slug) {
         return quoteAgentService.getCompanyPublicInfo(slug);
+    }
+
+    @GetMapping("/companies/{slug}/materials")
+    public List<String> getCompanyMaterials(@PathVariable String slug) {
+        return quoteAgentService.getCompanyMaterialNames(slug);
     }
 
     @GetMapping("/companies/{slug}/logo")

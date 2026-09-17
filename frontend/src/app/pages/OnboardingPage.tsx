@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import {
   completeOnboarding,
   getProfile,
@@ -161,7 +162,12 @@ function OnboardingPage() {
     <main className="onboarding-page">
       <div className="onboarding-header">
         <h1>Wiedza firmy</h1>
-        <p>Porozmawiaj z AI o swoich usługach i cenniku — im więcej wie, tym lepiej wyceni zlecenia klientów.</p>
+        <p>
+          Porozmawiaj z AI o swoich usługach i cenniku — im więcej wie, tym lepiej wyceni zlecenia klientów. Cennik jest{' '}
+          <strong>opcjonalny</strong>. Jeśli w rozmowie wspomnisz o konkretnym materiale albo urządzeniu, którego używasz (np. rodzaj rury,
+          model klimatyzatora), AI sam doda go do zakładki <Link to="/app/materials">Moje materiały</Link> — możesz tam też dodawać je
+          ręcznie. Im więcej informacji w sumie podasz, tym dokładniejsza będzie wycena.
+        </p>
       </div>
 
       {error && <Alert tone="error">{error}</Alert>}
@@ -194,7 +200,8 @@ function OnboardingPage() {
           <Card>
             <h2>Zakończenie onboardingu</h2>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-              Gdy wiedza cenowa jest gotowa, aktywuj publiczny link do wyceny dla klientów.
+              Gdy wiedza cenowa (cennik i/lub materiały) jest gotowa, aktywuj publiczny link do wyceny dla klientów. Cennik nie jest
+              wymagany — możesz aktywować link mając tylko uzupełnione materiały.
             </p>
             <Button size="sm" onClick={handleComplete} loading={completing} style={{ marginTop: 'var(--space-2)' }}>
               Zakończ onboarding
@@ -219,7 +226,8 @@ function OnboardingPage() {
           <Card>
             <h2>Cenniki i dokumenty</h2>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-              Prześlij istniejący cennik (PDF lub Excel), a AI wykorzysta go jako dodatkowe źródło wiedzy.
+              Prześlij istniejący cennik (PDF lub Excel) — AI wykorzysta go jako dodatkowe źródło wiedzy, a wymienione w nim materiały
+              trafią też automatycznie do zakładki <Link to="/app/materials">Moje materiały</Link>.
             </p>
             <form className="onboarding-upload-row" onSubmit={handleFileUpload}>
               <input className="onboarding-file-input input" type="file" ref={fileInputRef} accept=".pdf,.xls,.xlsx" />

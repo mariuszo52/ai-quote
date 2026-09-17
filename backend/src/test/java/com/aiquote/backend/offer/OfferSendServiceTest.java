@@ -56,8 +56,7 @@ class OfferSendServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OfferSendService(
-                offerRepository, quoteRepository, leadRepository, storageService, emailService, objectMapper, "https://app.example.com");
+        service = new OfferSendService(offerRepository, quoteRepository, leadRepository, storageService, emailService, objectMapper);
     }
 
     @Test
@@ -80,7 +79,7 @@ class OfferSendServiceTest {
         verify(emailService).send(argThat(message ->
                 message.to().equals("jan@example.com")
                         && message.subject().equals("Oferta dotycząca Twojego zapytania")
-                        && message.body().contains("https://app.example.com/offer/tok-123")
+                        && !message.body().contains("http")
                         && message.attachment() != null
                         && message.attachment().filename().equals("oferta-42.pdf")
                         && message.attachment().contentType().equals("application/pdf")

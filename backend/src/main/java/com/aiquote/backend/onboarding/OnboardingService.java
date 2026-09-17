@@ -20,6 +20,11 @@ import com.aiquote.backend.conversation.MessageDto;
 import com.aiquote.backend.conversation.MessageRepository;
 import com.aiquote.backend.conversation.MessageRole;
 import com.aiquote.backend.knowledgebase.CompanyPricingProfileService;
+import com.aiquote.backend.knowledgebase.PriceListFormatter;
+import com.aiquote.backend.knowledgebase.PriceListItemRepository;
+import com.aiquote.backend.knowledgebase.PriceListItemService;
+import com.aiquote.backend.knowledgebase.PriceListItemSource;
+import com.aiquote.backend.knowledgebase.PriceListItemTool;
 import com.aiquote.backend.knowledgebase.PricingProfileData;
 import com.aiquote.backend.knowledgebase.PricingProfileFormatter;
 import com.aiquote.backend.knowledgebase.PricingProfileTool;
@@ -67,17 +72,29 @@ public class OnboardingService {
             usługach, wywołaj narzędzie update_pricing_profile — podaj TYLKO usługi, o których \
             dowiedziałeś się czegoś nowego w tej turze (nie musisz powtarzać całej dotychczasowej \
             wiedzy, jest ona bezpiecznie scalana automatycznie z tym, co już wiadomo).
-            - Po wywołaniu narzędzia krótko potwierdź w rozmowie, czego się nauczyłeś, i zadaj \
-            kolejne pytanie.
+            - Jeśli właściciel wspomni o konkretnym materiale lub urządzeniu, którego używa przy \
+            realizacji zleceń (np. rodzaj rury, model klimatyzatora, konkretny produkt) — czy to \
+            przy okazji ceny, czy po prostu w rozmowie — wywołaj też narzędzie \
+            save_price_list_items, podając nazwę oraz cenę/jednostkę/kategorię, jeśli padły. To \
+            osobna lista od usług powyżej: usługi to praca, którą firma wykonuje, materiały to \
+            rzeczy fizyczne, których przy tej pracy używa. Nie proś specjalnie o materiały — \
+            zapisuj je tylko, gdy sami się pojawią w rozmowie.
+            - Po wywołaniu narzędzia/narzędzi krótko potwierdź w rozmowie, czego się nauczyłeś, i \
+            zadaj kolejne pytanie.
             - Pisz po polsku, w sposób przyjazny i rzeczowy.
 
             Dotychczas poznany profil wyceny firmy:
+            %s
+
+            Dotychczas zapisane materiały/urządzenia:
             %s
             """;
 
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final CompanyPricingProfileService profileService;
+    private final PriceListItemRepository priceListItemRepository;
+    private final PriceListItemService priceListItemService;
     private final CompanyService companyService;
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
@@ -128,8 +145,9 @@ public class OnboardingService {
         }
 
         String systemPrompt = buildSystemPrompt(companyId);
-        List<AiTool> tools = List.of(PricingProfileTool.definition(
-                "Zapisuje informacje o cenach jednej lub kilku usług, poznane w tej turze rozmowy.", objectMapper));
+        List<AiTool> tools = List.of(
+                PricingProfileTool.definition("Zapisuje informacje o cenach jednej lub kilku usług, poznane w tej turze rozmowy.", objectMapper),
+                PriceListItemTool.definition("Zapisuje materiały/urządzenia wspomniane przez właściciela w tej turze rozmowy.", objectMapper));
 
         boolean profileUpdated = false;
         String finalText = "";
@@ -150,6 +168,9 @@ public class OnboardingService {
                     profileService.mergeAiUpdate(companyId, readIncomingProfile(toolUse.input()));
                     profileUpdated = true;
                     toolResults.add(new AiToolResultBlock(toolUse.id(), "Profil zapisany."));
+                } else if (PriceListItemTool.NAME.equals(toolUse.name())) {
+                    priceListItemService.upsertAllFromToolInput(companyId, toolUse.input(), PriceListItemSource.CHAT);
+                    toolResults.add(new AiToolResultBlock(toolUse.id(), "Materiały zapisane."));
                 } else {
                     toolResults.add(new AiToolResultBlock(toolUse.id(), "Nieznane narzędzie."));
                 }
@@ -182,7 +203,10 @@ public class OnboardingService {
     }
 
     private String buildSystemPrompt(Long companyId) {
-        return SYSTEM_PROMPT_TEMPLATE.formatted(PricingProfileFormatter.toPromptText(profileService.getData(companyId)));
+        String materialsText = PriceListFormatter.toPromptText(priceListItemRepository.findByCompanyIdOrderByCreatedAtDesc(companyId));
+        return SYSTEM_PROMPT_TEMPLATE.formatted(
+                PricingProfileFormatter.toPromptText(profileService.getData(companyId)),
+                materialsText.isBlank() ? "brak — właściciel nie dodał jeszcze żadnych materiałów." : materialsText);
     }
 
     private PricingProfileData readIncomingProfile(JsonNode input) {

@@ -45,6 +45,12 @@ export function getCompanyPublicInfo(slug: string): Promise<CompanyPublicInfo> {
   return apiFetch(`/api/public/companies/${slug}`)
 }
 
+/** Material names only (never price) — feeds the chat composer's autocomplete so the
+ * client can see what the company already has on its list. */
+export function getCompanyMaterials(slug: string): Promise<string[]> {
+  return apiFetch(`/api/public/companies/${slug}/materials`)
+}
+
 export function startConversation(slug: string): Promise<StartConversationResponse> {
   return apiFetch(`/api/public/companies/${slug}/conversations`, { method: 'POST' })
 }

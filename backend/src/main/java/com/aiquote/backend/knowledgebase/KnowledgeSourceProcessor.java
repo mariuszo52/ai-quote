@@ -45,6 +45,7 @@ public class KnowledgeSourceProcessor {
     private final AttachmentRepository attachmentRepository;
     private final StorageService storageService;
     private final CompanyPricingProfileService profileService;
+    private final PriceListItemService priceListItemService;
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
 
@@ -73,6 +74,11 @@ public class KnowledgeSourceProcessor {
             knowledgeSourceRepository.save(source);
 
             profileService.mergeAiUpdate(source.getCompanyId(), extracted);
+            // Etap: materiały — a cennik document often also names concrete materials/parts
+            // (e.g. "rura PVC 50mm — 25 zł/mb") alongside priced services; those belong in
+            // "Moje materiały" (PriceListItem), a separate concept from the services list
+            // above, so this runs as its own extraction pass over the same document text.
+            extractMaterials(source.getCompanyId(), rawText);
         } catch (Exception e) {
             log.warn("Failed to process knowledge source {}", knowledgeSourceId, e);
             source.markFailed(e.getMessage());
@@ -149,5 +155,43 @@ public class KnowledgeSourceProcessor {
             }
         }
         return PricingProfileData.empty();
+    }
+
+    /**
+     * A second, independent tool-forced extraction over the same document text — reuses
+     * PriceListItemTool's schema/tool name since the shape (name/category/price/unit) is
+     * identical, only the surrounding prompt differs (a whole document vs. a chat turn).
+     * Failures here are swallowed rather than failing the whole import: materials are a
+     * bonus on top of the services extraction that already succeeded by this point.
+     */
+    private void extractMaterials(Long companyId, String rawText) {
+        String truncated = rawText.length() > MAX_EXTRACTION_CHARS ? rawText.substring(0, MAX_EXTRACTION_CHARS) : rawText;
+        String prompt = """
+                Poniżej znajduje się treść dokumentu (cennik / oferta) przesłanego przez firmę usługową. \
+                Wyodrębnij z niego WYŁĄCZNIE konkretne materiały/urządzenia/części wymienione w dokumencie \
+                (np. rodzaje rur, modele klimatyzatorów, konkretne produkty) — nie usługi/prace. Dla każdego \
+                podaj nazwę oraz, jeśli są podane wprost, kategorię, cenę i jednostkę. Niczego nie zgaduj. \
+                Jeśli dokument nie wymienia żadnych konkretnych materiałów, wywołaj narzędzie z pustą listą. \
+                Wywołaj narzędzie save_price_list_items z wynikiem.
+
+                Treść dokumentu:
+                %s
+                """.formatted(truncated);
+
+        try {
+            AiTool tool = PriceListItemTool.definition("Zapisuje materiały/urządzenia wyodrębnione z dokumentu.", objectMapper);
+            AiTurnResult result = aiClient.sendMessage(
+                    "Jesteś asystentem, który wyodrębnia materiały i urządzenia z dokumentów firmowych.",
+                    List.of(AiMessage.userText(prompt)),
+                    List.of(tool));
+
+            for (AiToolUseBlock toolUse : result.extractToolUses()) {
+                if (PriceListItemTool.NAME.equals(toolUse.name())) {
+                    priceListItemService.upsertAllFromToolInput(companyId, toolUse.input(), PriceListItemSource.UPLOADED);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract materials for company {}", companyId, e);
+        }
     }
 }

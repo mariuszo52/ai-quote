@@ -8,6 +8,7 @@ import EmbedWidgetPage from './app/pages/EmbedWidgetPage'
 import LeadDetailPage from './app/pages/LeadDetailPage'
 import LeadsPage from './app/pages/LeadsPage'
 import LoginPage from './app/pages/LoginPage'
+import MaterialsPage from './app/pages/MaterialsPage'
 import OnboardingPage from './app/pages/OnboardingPage'
 import QuoteDetailPage from './app/pages/QuoteDetailPage'
 import QuotesPage from './app/pages/QuotesPage'
@@ -24,6 +25,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/app/dashboard" element={<DashboardPage />} />
           <Route path="/app/onboarding" element={<OnboardingPage />} />
+          <Route path="/app/materials" element={<MaterialsPage />} />
           <Route path="/app/leads" element={<LeadsPage />} />
           <Route path="/app/leads/:id" element={<LeadDetailPage />} />
           <Route path="/app/quotes" element={<QuotesPage />} />

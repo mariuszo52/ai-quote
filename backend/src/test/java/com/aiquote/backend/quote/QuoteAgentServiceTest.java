@@ -19,7 +19,13 @@ import com.aiquote.backend.conversation.ConversationRepository;
 import com.aiquote.backend.conversation.ConversationType;
 import com.aiquote.backend.conversation.MessageRepository;
 import com.aiquote.backend.file.StorageService;
+import com.aiquote.backend.ai.AiTextBlock;
+import com.aiquote.backend.ai.AiTurnResult;
 import com.aiquote.backend.knowledgebase.CompanyPricingProfileService;
+import com.aiquote.backend.knowledgebase.PriceListItem;
+import com.aiquote.backend.knowledgebase.PriceListItemRepository;
+import com.aiquote.backend.knowledgebase.PriceListItemSource;
+import com.aiquote.backend.knowledgebase.PricingProfileData;
 import com.aiquote.backend.lead.Lead;
 import com.aiquote.backend.lead.LeadService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +34,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -48,6 +55,8 @@ class QuoteAgentServiceTest {
     private CompanyService companyService;
     @Mock
     private CompanyPricingProfileService profileService;
+    @Mock
+    private PriceListItemRepository priceListItemRepository;
     @Mock
     private ConversationRepository conversationRepository;
     @Mock
@@ -76,6 +85,7 @@ class QuoteAgentServiceTest {
         service = new QuoteAgentService(
                 companyService,
                 profileService,
+                priceListItemRepository,
                 conversationRepository,
                 messageRepository,
                 attachmentRepository,
@@ -116,6 +126,29 @@ class QuoteAgentServiceTest {
 
         verify(conversationRepository, never()).save(any());
         verify(aiClient, never()).sendMessage(any(), any(), any());
+    }
+
+    @Test
+    void startConversationIncludesMaterialsInTheSystemPromptAlongsideServices() {
+        Company company = new Company("Firma", "firma", CompanyStatus.ACTIVE);
+        ReflectionTestUtils.setField(company, "id", 5L);
+        ReflectionTestUtils.setField(company, "createdAt", Instant.now());
+        when(companyService.getBySlug("firma")).thenReturn(company);
+        when(quoteRepository.countByCompanyIdAndCreatedAtBetween(eq(5L), any(), any())).thenReturn(0L);
+        when(conversationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(profileService.getData(5L)).thenReturn(PricingProfileData.empty());
+
+        PriceListItem material = new PriceListItem(5L, "Klimatyzator Daikin X", null, 3500.0, "szt", PriceListItemSource.MANUAL);
+        when(priceListItemRepository.findByCompanyIdOrderByCreatedAtDesc(5L)).thenReturn(java.util.List.of(material));
+
+        when(aiClient.sendMessage(any(), any(), any()))
+                .thenReturn(new AiTurnResult(java.util.List.of(new AiTextBlock("Cześć!")), "end_turn"));
+
+        service.startConversation("firma");
+
+        ArgumentCaptor<String> systemPromptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(aiClient).sendMessage(systemPromptCaptor.capture(), any(), any());
+        assertThat(systemPromptCaptor.getValue()).contains("Klimatyzator Daikin X");
     }
 
     @Test

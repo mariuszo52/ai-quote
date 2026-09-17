@@ -15,6 +15,16 @@ public final class PricingProfileFormatter {
     private PricingProfileFormatter() {
     }
 
+    /** True once the owner has provided anything at all — a non-empty services list or
+     * general notes. Used to decide, alongside PriceListItem, whether there's any
+     * pricing knowledge to hand the client-facing quote agent at all (see
+     * QuoteAgentService) — cennik alone is no longer required for that, materials count
+     * too, so this check is kept separate from toPromptText's own "brak" fallback text. */
+    public static boolean hasContent(PricingProfileData data) {
+        List<PricingServiceEntry> services = data.services() != null ? data.services() : List.of();
+        return !services.isEmpty() || !isBlank(data.generalNotes());
+    }
+
     public static String toPromptText(PricingProfileData data) {
         List<PricingServiceEntry> services = data.services() != null ? data.services() : List.of();
         if (services.isEmpty() && isBlank(data.generalNotes())) {

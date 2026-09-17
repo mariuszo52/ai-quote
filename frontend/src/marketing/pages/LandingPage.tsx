@@ -10,6 +10,7 @@ const PROBLEMS = [
   'Przygotowanie profesjonalnej oferty PDF zajmuje czas, którego nie masz między zleceniami.',
   'Zapytania spoza godzin pracy giną w skrzynce albo w ogóle do Ciebie nie docierają.',
   'Nie wiesz, jak wkleić czat na swoją stronę — utykasz na etapie technicznym i odkładasz to na później.',
+  'Prosty formularz na stronie nie uwzględnia wyjątków — każde nietypowe zlecenie i tak ląduje na Twoim telefonie.',
 ]
 
 const SOLUTIONS = [
@@ -19,6 +20,7 @@ const SOLUTIONS = [
   'Profesjonalna oferta PDF generuje się automatycznie — Ty tylko sprawdzasz i klikasz „Wyślij”.',
   'Żadne zapytanie nie umknie — trafia do systemu i czeka na Ciebie, nawet z nocy czy weekendu.',
   'Pomożemy Ci bezpłatnie umieścić widget czatu na Twojej stronie — wystarczy się do nas odezwać.',
+  'Z każdą kolejną wyceną AI lepiej poznaje Twoją firmę — im więcej zapytań przez niego przejdzie, tym trafniej wycenia kolejne.',
 ]
 
 const CUSTOM_BUILD_COSTS = [
@@ -109,7 +111,7 @@ function LandingPage() {
           <Link to="/app/login" className="btn btn-primary btn-lg">
             Załóż darmowe konto
           </Link>
-          <p className="landing-hero-trial-note">7 dni za darmo · 3 wyceny · bez karty płatniczej</p>
+          <p className="landing-hero-trial-note">7 dni za darmo · 3 wyceny · bez karty płatniczej · pomagamy bezpłatnie dodać widget na Twoją stronę</p>
         </div>
       </section>
 

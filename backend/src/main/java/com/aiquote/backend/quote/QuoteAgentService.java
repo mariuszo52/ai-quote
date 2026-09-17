@@ -27,6 +27,10 @@ import com.aiquote.backend.conversation.MessageRole;
 import com.aiquote.backend.file.FileSignature;
 import com.aiquote.backend.file.StorageService;
 import com.aiquote.backend.knowledgebase.CompanyPricingProfileService;
+import com.aiquote.backend.knowledgebase.PriceListFormatter;
+import com.aiquote.backend.knowledgebase.PriceListItem;
+import com.aiquote.backend.knowledgebase.PriceListItemRepository;
+import com.aiquote.backend.knowledgebase.PricingProfileData;
 import com.aiquote.backend.knowledgebase.PricingProfileFormatter;
 import com.aiquote.backend.lead.Lead;
 import com.aiquote.backend.lead.LeadService;
@@ -68,17 +72,26 @@ public class QuoteAgentService {
             zrozumieć, czego potrzebuje, i przygotować wstępną wycenę zgodną ze sposobem wyceny \
             tej firmy.
 
-            Sposób wyceny firmy (ustalony przez właściciela):
+            Wiedza firmy o cenach, usługach i materiałach (ustalona przez właściciela):
             %s
 
             Zasady:
             - Na powitanie, zanim zapytasz o cokolwiek innego, wywołaj narzędzie suggest_options \
             z listą 2-5 głównych rodzajów usług tej firmy (na podstawie sposobu wyceny powyżej), \
             żeby klient mógł od razu kliknąć, czego potrzebuje, zamiast pisać od zera.
-            - Zadawaj tylko potrzebne pytania — jedno lub dwa na raz. Gdy pytanie ma naturalny, \
-            krótki zestaw odpowiedzi (np. wybór wariantu, zakresu, materiału, pilności), wywołaj \
-            suggest_options z 2-5 krótkimi opcjami do wyboru zamiast czekać na opis tekstowy — \
-            klient zawsze może zamiast tego napisać własną odpowiedź.
+            - Materiały i urządzenia w wiedzy firmy powyżej to Twoja WEWNĘTRZNA wiedza do doboru \
+            sprzętu i wyliczenia ceny — nigdy nie prezentuj ich klientowi jako listy do wyboru \
+            (np. NIE pytaj "które z tych urządzeń Cię interesuje?" ani "czy może być urządzenie \
+            X z naszej listy?"). Najpierw dowiedz się od klienta, czego faktycznie potrzebuje i \
+            jakie ma wymagania (co chce osiągnąć, jaki zakres prac, warunki/parametry miejsca \
+            zlecenia, jego oczekiwania) — dopiero na tej podstawie SAM dobierz odpowiedni \
+            materiał/urządzenie z listy firmy do przygotowania wyceny, tak jak zrobiłby to \
+            doświadczony handlowiec tej firmy. Konkretny dobrany materiał możesz wspomnieć \
+            klientowi dopiero w podsumowaniu wyceny, nie jako pytanie do wyboru na starcie.
+            - Zadawaj tylko potrzebne pytania o samo zlecenie — jedno lub dwa na raz. Gdy pytanie \
+            o zakres prac, wariant usługi czy pilność ma naturalny, krótki zestaw odpowiedzi, \
+            wywołaj suggest_options z 2-5 krótkimi opcjami do wyboru zamiast czekać na opis \
+            tekstowy — klient zawsze może zamiast tego napisać własną odpowiedź.
             - Jeśli klient przesłał zdjęcia, weź pod uwagę to, co na nich widać, przy ocenie \
             zakresu prac.
             - Gdy masz wystarczające informacje, wywołaj narzędzie propose_quote z widełkami \
@@ -144,6 +157,7 @@ public class QuoteAgentService {
 
     private final CompanyService companyService;
     private final CompanyPricingProfileService profileService;
+    private final PriceListItemRepository priceListItemRepository;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final AttachmentRepository attachmentRepository;
@@ -169,6 +183,16 @@ public class QuoteAgentService {
 
     public LogoContent getCompanyLogo(String slug) {
         return companyService.getPublicLogo(slug);
+    }
+
+    /** Material NAMES only (never price) — this is an unauthenticated endpoint reachable
+     * by anyone who knows the company's public slug, so it feeds the client chat's
+     * autocomplete without exposing the owner's actual price list. */
+    public List<String> getCompanyMaterialNames(String slug) {
+        Company company = companyService.getBySlug(slug);
+        return priceListItemRepository.findByCompanyIdOrderByCreatedAtDesc(company.getId()).stream()
+                .map(PriceListItem::getName)
+                .toList();
     }
 
     /** Blocks starting a new conversation once the company has used up its trial/plan
@@ -197,7 +221,7 @@ public class QuoteAgentService {
         assertWithinPlanLimit(company);
         Conversation conversation = conversationRepository.save(new Conversation(company.getId(), ConversationType.CLIENT_QUOTE));
 
-        String systemPrompt = buildSystemPrompt(company.getName(), PricingProfileFormatter.toPromptText(profileService.getData(company.getId())));
+        String systemPrompt = buildSystemPrompt(company.getName(), buildKnowledgeSummary(company.getId()));
         TurnOutcome outcome = runConversationTurn(new ArrayList<>(List.of(AiMessage.userText(KICKOFF_USER_TEXT))), systemPrompt);
         String greeting = outcome.text().isBlank() ? "Cześć! W czym mogę Ci dziś pomóc?" : outcome.text();
         messageRepository.save(new Message(conversation.getId(), MessageRole.ASSISTANT, greeting));
@@ -261,7 +285,7 @@ public class QuoteAgentService {
         List<AiMessage> aiMessages = historyReader.buildHistory(conversation.getId());
 
         Company company = companyService.getById(conversation.getCompanyId());
-        String systemPrompt = buildSystemPrompt(company.getName(), PricingProfileFormatter.toPromptText(profileService.getData(conversation.getCompanyId())));
+        String systemPrompt = buildSystemPrompt(company.getName(), buildKnowledgeSummary(conversation.getCompanyId()));
 
         TurnOutcome outcome = runConversationTurn(aiMessages, systemPrompt);
         if (outcome.quote() != null) {
@@ -404,6 +428,36 @@ public class QuoteAgentService {
             optionsNode.forEach(node -> options.add(node.asText()));
         }
         return options;
+    }
+
+    /**
+     * Combines cennik/services and "Moje materiały" into one block of knowledge for the
+     * prompt. Cennik is no longer required — a company can rely on materials alone (or
+     * vice versa) — so this returns blank only when BOTH are empty, which is exactly the
+     * condition buildSystemPrompt already treats as "brak" (triggering the wide-range,
+     * low-confidence, "wymaga kontaktu właściciela" fallback in the system prompt rules).
+     */
+    private String buildKnowledgeSummary(Long companyId) {
+        PricingProfileData pricingData = profileService.getData(companyId);
+        List<PriceListItem> materials = priceListItemRepository.findByCompanyIdOrderByCreatedAtDesc(companyId);
+
+        boolean hasPricing = PricingProfileFormatter.hasContent(pricingData);
+        boolean hasMaterials = !materials.isEmpty();
+        if (!hasPricing && !hasMaterials) {
+            return "";
+        }
+
+        StringBuilder summary = new StringBuilder();
+        if (hasPricing) {
+            summary.append(PricingProfileFormatter.toPromptText(pricingData));
+        }
+        if (hasMaterials) {
+            if (!summary.isEmpty()) {
+                summary.append("\n\n");
+            }
+            summary.append(PriceListFormatter.toPromptText(materials));
+        }
+        return summary.toString();
     }
 
     private String buildSystemPrompt(String companyName, String profileSummary) {
